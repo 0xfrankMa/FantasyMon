@@ -13,15 +13,6 @@ interface Props {
 export function BattleScreen({ save, setSave, onBack }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
-  if (save.activeTeam.length === 0) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center">
-        <p className="text-gray-400">No team selected. Go back and choose pets.</p>
-        <button onClick={onBack} className="mt-4 text-yellow-400 hover:text-yellow-300">← Back</button>
-      </div>
-    )
-  }
-
   useEffect(() => {
     if (!canvasRef.current) return
 
@@ -50,6 +41,15 @@ export function BattleScreen({ save, setSave, onBack }: Props) {
       renderer.destroy()
     }
   }, [])  // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (save.activeTeam.length === 0) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center">
+        <p className="text-gray-400">No team selected. Go back and choose pets.</p>
+        <button onClick={onBack} className="mt-4 text-yellow-400 hover:text-yellow-300">← Back</button>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center gap-4 p-8">

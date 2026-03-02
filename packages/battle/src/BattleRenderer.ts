@@ -1,90 +1,110 @@
 // packages/battle/src/BattleRenderer.ts
-import * as PIXI from 'pixi.js'
 import type { BattleEvent, Pet } from '@fantasymon/core'
 import { SPECIES } from '@fantasymon/core'
 
-const TYPE_COLORS: Record<string, number> = {
-  fire: 0xff4400, water: 0x0088ff, grass: 0x44cc44, electric: 0xffee00,
-  dark: 0x442266, light: 0xffffaa, steel: 0x8899aa, dragon: 0x7700cc,
+const TYPE_COLORS: Record<string, string> = {
+  fire: '#ff4400', water: '#0088ff', grass: '#44cc44', electric: '#ffee00',
+  dark: '#442266', light: '#ffffaa', steel: '#8899aa', dragon: '#7700cc',
+}
+
+interface UnitState {
+  x: number
+  y: number
+  color: string
+  name: string
+  currentHp: number
+  maxHp: number
+  visible: boolean
+  flash: boolean
 }
 
 export class BattleRenderer {
-  private app: PIXI.Application
-  private unitSprites: Map<string, PIXI.Container> = new Map()
-  private hpTracker: Map<string, number> = new Map()
+  private canvas: HTMLCanvasElement
+  private ctx: CanvasRenderingContext2D
+  private units: Map<string, UnitState> = new Map()
+  private animFrameId: number | null = null
 
   constructor(canvas: HTMLCanvasElement) {
-    this.app = new PIXI.Application({
-      view: canvas,
-      width: 800,
-      height: 400,
-      backgroundColor: 0x1a1a2e,
-      antialias: true,
-    })
+    this.canvas = canvas
+    this.ctx = canvas.getContext('2d')!
+    this.startLoop()
+  }
+
+  private startLoop() {
+    const draw = () => {
+      this.render()
+      this.animFrameId = requestAnimationFrame(draw)
+    }
+    this.animFrameId = requestAnimationFrame(draw)
   }
 
   init(playerTeam: Pet[], enemyTeam: Pet[]) {
-    this.app.stage.removeChildren()
-    this.unitSprites.clear()
-    this.hpTracker.clear()
-    ;[...playerTeam, ...enemyTeam].forEach(pet => this.hpTracker.set(pet.id, pet.currentHp))
-    playerTeam.forEach((pet, i) => this.createSprite(pet, i, 'player', playerTeam.length))
-    enemyTeam.forEach((pet, i) => this.createSprite(pet, i, 'enemy', enemyTeam.length))
+    this.units.clear()
+    const place = (team: Pet[], side: 'player' | 'enemy') => {
+      const spacing = 800 / (team.length + 1)
+      team.forEach((pet, i) => {
+        const species = SPECIES[pet.speciesId]
+        this.units.set(pet.id, {
+          x: spacing * (i + 1) - 40,
+          y: side === 'player' ? 300 : 40,
+          color: TYPE_COLORS[species.type1] ?? '#888888',
+          name: species.name,
+          currentHp: pet.currentHp,
+          maxHp: pet.maxHp,
+          visible: true,
+          flash: false,
+        })
+      })
+    }
+    place(playerTeam, 'player')
+    place(enemyTeam, 'enemy')
   }
 
-  private createSprite(pet: Pet, index: number, side: 'player' | 'enemy', total: number) {
-    const species = SPECIES[pet.speciesId]
-    const color = TYPE_COLORS[species.type1] ?? 0x888888
+  private render() {
+    const ctx = this.ctx
+    ctx.fillStyle = '#1a1a2e'
+    ctx.fillRect(0, 0, this.canvas.width, this.canvas.height)
 
-    const container = new PIXI.Container()
-    const rect = new PIXI.Graphics()
-    rect.beginFill(color, 0.8)
-    rect.drawRoundedRect(0, 0, 80, 60, 8)
-    rect.endFill()
-
-    const label = new PIXI.Text(species.name, { fontSize: 9, fill: 0xffffff, wordWrap: true, wordWrapWidth: 78 })
-    label.x = 4; label.y = 4
-
-    const hpText = new PIXI.Text(`HP:${pet.currentHp}`, { fontSize: 8, fill: 0xffffff })
-    hpText.x = 4; hpText.y = 44
-    hpText.name = 'hp'
-
-    container.addChild(rect, label, hpText)
-
-    const spacing = 800 / (total + 1)
-    container.x = spacing * (index + 1) - 40
-    container.y = side === 'player' ? 300 : 40
-
-    this.app.stage.addChild(container)
-    this.unitSprites.set(pet.id, container)
+    for (const unit of this.units.values()) {
+      if (!unit.visible) continue
+      ctx.globalAlpha = unit.flash ? 0.3 : 1
+      ctx.fillStyle = unit.color
+      ctx.beginPath()
+      ctx.roundRect(unit.x, unit.y, 80, 60, 8)
+      ctx.fill()
+      ctx.globalAlpha = 1
+      ctx.fillStyle = '#ffffff'
+      ctx.font = '9px sans-serif'
+      ctx.fillText(unit.name, unit.x + 4, unit.y + 14)
+      ctx.font = '8px sans-serif'
+      ctx.fillText(`HP:${unit.currentHp}`, unit.x + 4, unit.y + 52)
+    }
   }
 
   handleEvent(event: BattleEvent) {
     if (event.type === 'attack') {
-      // Flash attacker
-      const sprite = this.unitSprites.get(event.attackerId)
-      if (sprite) {
-        const rect = sprite.children[0] as PIXI.Graphics
-        rect.alpha = 0.3
-        setTimeout(() => { rect.alpha = 1 }, 100)
+      const attacker = this.units.get(event.attackerId)
+      if (attacker) {
+        attacker.flash = true
+        setTimeout(() => { attacker.flash = false }, 100)
       }
-      // Update target HP
-      const prevHp = this.hpTracker.get(event.targetId) ?? 0
-      const newHp = Math.max(0, prevHp - event.damage)
-      this.hpTracker.set(event.targetId, newHp)
-      const targetSprite = this.unitSprites.get(event.targetId)
-      if (targetSprite) {
-        const hpText = targetSprite.getChildByName('hp') as PIXI.Text
-        if (hpText) hpText.text = `HP:${newHp}`
+      const target = this.units.get(event.targetId)
+      if (target) {
+        target.currentHp = Math.max(0, target.currentHp - event.damage)
       }
     }
     if (event.type === 'faint') {
-      const sprite = this.unitSprites.get(event.unitId)
-      if (sprite) sprite.visible = false
+      const unit = this.units.get(event.unitId)
+      if (unit) unit.visible = false
+    }
+    if (event.type === 'heal') {
+      const unit = this.units.get(event.unitId)
+      if (unit) unit.currentHp = Math.min(unit.maxHp, unit.currentHp + event.amount)
     }
   }
 
   destroy() {
-    this.app.destroy(false)
+    if (this.animFrameId !== null) cancelAnimationFrame(this.animFrameId)
+    this.units.clear()
   }
 }

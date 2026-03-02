@@ -8,6 +8,9 @@ import { reconstructBuffs } from '@fantasymon/core'
 
 const KEY = 'fantasymon_save'
 
+// Species available from the start (all common-rarity species)
+const DEFAULT_UNLOCKED_SPECIES = ['embercub', 'aquafin', 'leafpup', 'voltmouse']
+
 // Serializable version of SaveFile — activeBuffs store only metadata, not the apply function
 type SerializableSaveFile = Omit<SaveFile, 'runState'> & {
   runState: (Omit<RunState, 'activeBuffs'> & {
@@ -19,19 +22,23 @@ export function loadSave(): SaveFile | null {
   const raw = localStorage.getItem(KEY)
   if (!raw) return null
   try {
-    const parsed = JSON.parse(raw) as SerializableSaveFile
+    const parsed = JSON.parse(raw) as SerializableSaveFile & { wallet?: number; unlockedSpecies?: string[] }
     const rosterIds = new Set(parsed.roster.map(p => p.id))
-    parsed.activeTeam = parsed.activeTeam.filter(id => rosterIds.has(id))
-    if (!parsed.runState) return parsed as unknown as SaveFile
-    // Rehydrate buff apply functions from registry
-    const rehydrated: SaveFile = {
+    const activeTeam = parsed.activeTeam.filter(id => rosterIds.has(id))
+    const base = {
       ...parsed,
+      activeTeam,
+      wallet: parsed.wallet ?? 0,
+      unlockedSpecies: parsed.unlockedSpecies ?? [...DEFAULT_UNLOCKED_SPECIES],
+    }
+    if (!parsed.runState) return base as SaveFile
+    return {
+      ...base,
       runState: reconstructBuffs({
         ...parsed.runState,
         activeBuffs: parsed.runState.activeBuffs as any,
       }),
     }
-    return rehydrated
   } catch {
     return null
   }
@@ -54,7 +61,7 @@ export function writeSave(save: SaveFile): void {
 }
 
 export function newSave(): SaveFile {
-  return { roster: [], activeTeam: [], runState: null }
+  return { roster: [], activeTeam: [], runState: null, wallet: 0, unlockedSpecies: [...DEFAULT_UNLOCKED_SPECIES] }
 }
 
 export function deleteSave(): void {

@@ -126,4 +126,6 @@ export interface SaveFile {
   roster: Pet[]
   activeTeam: string[]     // array of Pet ids (max 5)
   runState: RunState | null
+  wallet: number           // persistent gold banked across runs
+  unlockedSpecies: string[] // species IDs the player can receive or buy
 }

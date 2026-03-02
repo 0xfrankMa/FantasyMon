@@ -11,6 +11,7 @@ const TYPE_COLORS: Record<string, number> = {
 export class BattleRenderer {
   private app: PIXI.Application
   private unitSprites: Map<string, PIXI.Container> = new Map()
+  private hpTracker: Map<string, number> = new Map()
 
   constructor(canvas: HTMLCanvasElement) {
     this.app = new PIXI.Application({
@@ -25,6 +26,8 @@ export class BattleRenderer {
   init(playerTeam: Pet[], enemyTeam: Pet[]) {
     this.app.stage.removeChildren()
     this.unitSprites.clear()
+    this.hpTracker.clear()
+    ;[...playerTeam, ...enemyTeam].forEach(pet => this.hpTracker.set(pet.id, pet.currentHp))
     playerTeam.forEach((pet, i) => this.createSprite(pet, i, 'player', playerTeam.length))
     enemyTeam.forEach((pet, i) => this.createSprite(pet, i, 'enemy', enemyTeam.length))
   }
@@ -52,27 +55,27 @@ export class BattleRenderer {
     container.x = spacing * (index + 1) - 40
     container.y = side === 'player' ? 300 : 40
 
-    container.name = pet.id
     this.app.stage.addChild(container)
     this.unitSprites.set(pet.id, container)
   }
 
-  handleEvent(event: BattleEvent, allPets: Pet[]) {
+  handleEvent(event: BattleEvent) {
     if (event.type === 'attack') {
-      // Flash the attacker briefly
+      // Flash attacker
       const sprite = this.unitSprites.get(event.attackerId)
       if (sprite) {
         const rect = sprite.children[0] as PIXI.Graphics
-        const origAlpha = rect.alpha
-        rect.alpha = 1
-        setTimeout(() => { rect.alpha = origAlpha }, 100)
+        rect.alpha = 0.3
+        setTimeout(() => { rect.alpha = 1 }, 100)
       }
-      // Update target HP display
-      const target = allPets.find(p => p.id === event.targetId)
+      // Update target HP
+      const prevHp = this.hpTracker.get(event.targetId) ?? 0
+      const newHp = Math.max(0, prevHp - event.damage)
+      this.hpTracker.set(event.targetId, newHp)
       const targetSprite = this.unitSprites.get(event.targetId)
-      if (target && targetSprite) {
+      if (targetSprite) {
         const hpText = targetSprite.getChildByName('hp') as PIXI.Text
-        if (hpText) hpText.text = `HP:${target.currentHp}`
+        if (hpText) hpText.text = `HP:${newHp}`
       }
     }
     if (event.type === 'faint') {

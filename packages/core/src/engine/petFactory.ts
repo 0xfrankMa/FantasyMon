@@ -39,6 +39,23 @@ function randomIvs(): StatBlock {
 
 const ZERO_EVS: StatBlock = { hp:0, atk:0, def:0, spAtk:0, spDef:0, speed:0 }
 
+function computeEvolutionStage(speciesId: string): number {
+  function findPreEvolution(targetId: string): string | undefined {
+    return Object.values(SPECIES).find(
+      s => s.evolutions.some(e => e.targetSpeciesId === targetId)
+    )?.id
+  }
+  let stage = 0
+  let current = speciesId
+  for (;;) {
+    const preEvo = findPreEvolution(current)
+    if (!preEvo) break
+    stage++
+    current = preEvo
+  }
+  return stage
+}
+
 export function createPet(speciesId: string, level: number): Pet {
   const species = SPECIES[speciesId]
   if (!species) throw new Error(`Unknown species: ${speciesId}`)
@@ -59,9 +76,7 @@ export function createPet(speciesId: string, level: number): Pet {
 
   const maxHp = calcMaxHp(species.baseStats.hp, ivs.hp, evs.hp, level)
 
-  const evolutionStage = Object.values(SPECIES).some(
-    s => s.evolutions.some(e => e.targetSpeciesId === speciesId)
-  ) ? 1 : 0
+  const evolutionStage = computeEvolutionStage(speciesId)
 
   return {
     id: crypto.randomUUID(),

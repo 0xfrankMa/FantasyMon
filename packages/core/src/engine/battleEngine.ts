@@ -1,15 +1,21 @@
 // packages/core/src/engine/battleEngine.ts
-import type { Pet, BattleEvent, Skill, StatusEffect } from '../types'
+import type { Pet, BattleEvent, Skill, StatusEffect, Nature, StatBlock } from '../types'
 import { SPECIES } from '../data/species'
 import { getTypeMultiplier } from '../data/typeChart'
 import { calcStat } from './statCalc'
+
+function getNatureMultiplier(nature: Nature, stat: keyof Omit<StatBlock, 'hp'>): number {
+  if (nature.boostedStat === nature.reducedStat) return 1.0
+  if (nature.boostedStat === stat) return 1.05
+  if (nature.reducedStat === stat) return 0.95
+  return 1.0
+}
 
 function getEffectiveSpeed(pet: Pet): number {
   const species = SPECIES[pet.speciesId]
   let speed = calcStat(species.baseStats.speed, pet.ivs.speed, pet.evs.speed, pet.level)
   // Apply nature modifier
-  if (pet.nature.boostedStat === 'speed') speed = Math.floor(speed * 1.05)
-  if (pet.nature.reducedStat === 'speed') speed = Math.floor(speed * 0.95)
+  speed = Math.floor(speed * getNatureMultiplier(pet.nature, 'speed'))
   // Apply slow status if present
   const slowEffect = pet.statusEffects?.find(s => s.type === 'slow')
   if (slowEffect) speed = Math.floor(speed * (1 - slowEffect.value))
@@ -30,8 +36,8 @@ function calcDamage(attacker: Pet, defender: Pet, skill: Skill): number {
 
   // Apply nature modifier to attack stat
   const atkNatureMod = skill.category === 'physical'
-    ? (attacker.nature.boostedStat === 'atk' ? 1.05 : attacker.nature.reducedStat === 'atk' ? 0.95 : 1.0)
-    : (attacker.nature.boostedStat === 'spAtk' ? 1.05 : attacker.nature.reducedStat === 'spAtk' ? 0.95 : 1.0)
+    ? getNatureMultiplier(attacker.nature, 'atk')
+    : getNatureMultiplier(attacker.nature, 'spAtk')
 
   const typeMulti = getTypeMultiplier(skill.type, defSpecies.type1)
     * (defSpecies.type2 ? getTypeMultiplier(skill.type, defSpecies.type2) : 1)
@@ -102,9 +108,10 @@ export class BattleEngine {
 
         // Prefer offensive skills; use status/heal skills when HP is low or no offensive ready
         const readyOffensive = pet.skills.find(s => s.cooldownRemaining === 0 && s.skill.power > 0)
+        const readyStatus = pet.skills.find(s => s.cooldownRemaining === 0 && s.skill.category === 'status')
         const readyAny = pet.skills.find(s => s.cooldownRemaining === 0)
-        const readySkill = (pet.currentHp < pet.maxHp * 0.4 && readyAny && readyAny.skill.category === 'status')
-          ? readyAny
+        const readySkill = (pet.currentHp < pet.maxHp * 0.4 && readyStatus)
+          ? readyStatus
           : (readyOffensive ?? readyAny)
 
         if (!readySkill) continue
@@ -174,14 +181,18 @@ export class BattleEngine {
           unit.statusEffects = unit.statusEffects
             .map(s => ({ ...s, duration: s.duration - 1 }))
 
+          let unitFainted = false
           for (const effect of unit.statusEffects) {
+            if (unitFainted) break
             // Apply periodic damage for burn/poison
             if (effect.type === 'burn' || effect.type === 'poison') {
               const dmg = Math.max(1, Math.floor(unit.maxHp * effect.value))
               unit.currentHp = Math.max(0, unit.currentHp - dmg)
               this.events.push({ type: 'status_damage', unitId: unit.id, amount: dmg, effectType: effect.type })
-              if (unit.currentHp === 0) {
+              if (unit.currentHp <= 0) {
+                unit.currentHp = 0
                 this.events.push({ type: 'faint', unitId: unit.id })
+                unitFainted = true
               }
             }
           }

@@ -84,6 +84,7 @@ export interface Pet {
   skills: SkillSlot[]
   evolutionStage: number
   currentHp: number        // tracked during battle
+  maxHp: number
 }
 
 export type BattleEvent =

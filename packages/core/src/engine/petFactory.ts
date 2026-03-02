@@ -1,5 +1,4 @@
 // packages/core/src/engine/petFactory.ts
-import { nanoid } from 'nanoid'
 import type { Pet, Nature, StatBlock } from '../types'
 import { SPECIES } from '../data/species'
 import { SKILLS } from '../data/skills'
@@ -50,13 +49,22 @@ export function createPet(speciesId: string, level: number): Pet {
 
   const learnedSkills = species.learnset
     .filter(e => e.level <= level)
+    .sort((a, b) => a.level - b.level)
     .slice(-4) // keep last 4 learned skills
-    .map(e => ({ skill: SKILLS[e.skillId], cooldownRemaining: 0 }))
+    .map(e => {
+      const skill = SKILLS[e.skillId]
+      if (!skill) throw new Error(`Unknown skill: ${e.skillId} in species ${speciesId}`)
+      return { skill, cooldownRemaining: 0 }
+    })
 
   const maxHp = calcMaxHp(species.baseStats.hp, ivs.hp, evs.hp, level)
 
+  const evolutionStage = Object.values(SPECIES).some(
+    s => s.evolutions.some(e => e.targetSpeciesId === speciesId)
+  ) ? 1 : 0
+
   return {
-    id: nanoid(),
+    id: crypto.randomUUID(),
     speciesId,
     level,
     exp: 0,
@@ -64,7 +72,8 @@ export function createPet(speciesId: string, level: number): Pet {
     ivs,
     evs,
     skills: learnedSkills,
-    evolutionStage: 0,
+    evolutionStage,
     currentHp: maxHp,
+    maxHp,
   }
 }

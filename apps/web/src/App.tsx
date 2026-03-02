@@ -4,6 +4,7 @@ import type { SaveFile } from '@fantasymon/core'
 import { loadSave, newSave, writeSave } from './save'
 import { HomeScreen } from './screens/HomeScreen'
 import { TeamBuilderScreen } from './screens/TeamBuilderScreen'
+import { BattleScreen } from './screens/BattleScreen'
 
 export type Screen = 'home' | 'teambuilder' | 'run'
 
@@ -18,7 +19,7 @@ export function App() {
   }
 
   if (screen === 'run') {
-    return <div>Battle coming soon!</div>
+    return <BattleScreen save={save} setSave={setSave} onBack={() => setScreen('home')} />
   }
 
   return <HomeScreen save={save} setSave={setSave} onNavigate={setScreen} />

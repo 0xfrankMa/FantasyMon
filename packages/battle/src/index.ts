@@ -1,1 +1,1 @@
-// Battle renderer will be exported here (Task 10)
+export { BattleRenderer } from './BattleRenderer'

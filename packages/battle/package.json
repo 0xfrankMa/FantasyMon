@@ -2,7 +2,11 @@
   "name": "@fantasymon/battle",
   "version": "0.0.1",
   "main": "./src/index.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
   "dependencies": {
+    "@fantasymon/core": "workspace:*",
     "pixi.js": "^7.4.0"
   },
   "devDependencies": {

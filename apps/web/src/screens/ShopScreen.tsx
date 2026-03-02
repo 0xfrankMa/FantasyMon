@@ -11,6 +11,15 @@ interface Props {
 
 const PRICES: Record<string, number> = { common: 15, rare: 25, epic: 40 }
 
+const TYPE_COLORS: Record<string, string> = {
+  fire: 'bg-orange-600', water: 'bg-blue-600', grass: 'bg-green-600',
+  electric: 'bg-yellow-500', dark: 'bg-purple-700', light: 'bg-yellow-200',
+  steel: 'bg-gray-500', dragon: 'bg-indigo-600',
+}
+const RARITY_COLORS: Record<string, string> = {
+  common: 'text-gray-300', rare: 'text-blue-400', epic: 'text-purple-400', legendary: 'text-yellow-400',
+}
+
 function pickShopEggs(count: number): string[] {
   const ids = Object.keys(SPECIES)
   const shuffled = [...ids].sort(() => Math.random() - 0.5)
@@ -25,11 +34,10 @@ export function ShopScreen({ save, setSave, onBack }: Props) {
 
   const [eggIds] = useState<string[]>(() => pickShopEggs(3))
   const [purchased, setPurchased] = useState<Set<string>>(() => new Set())
-  const [currency, setCurrency] = useState(runState?.inRunCurrency ?? 0)
 
   if (!runState || !currentNode) return null
 
-  const safeRunState = runState as import('@fantasymon/core').RunState
+  const currency = runState.inRunCurrency
 
   function handleBuy(speciesId: string) {
     const species = SPECIES[speciesId]
@@ -38,28 +46,18 @@ export function ShopScreen({ save, setSave, onBack }: Props) {
     if (currency < price) return
     const newPet = createPet(speciesId, baseLevel)
     const newCurrency = currency - price
-    setCurrency(newCurrency)
-    setPurchased(prev => new Set([...prev, speciesId + '_' + newPet.id]))
+    setPurchased(prev => new Set([...prev, speciesId]))
     setSave({
       ...save,
       roster: [...save.roster, newPet],
-      runState: { ...safeRunState, inRunCurrency: newCurrency },
+      runState: { ...runState!, inRunCurrency: newCurrency },
     })
   }
 
   function handleLeave() {
-    const nextRun = advanceNode({ ...safeRunState, inRunCurrency: currency })
+    const nextRun = advanceNode(runState!)
     setSave({ ...save, runState: nextRun })
     onBack()
-  }
-
-  const TYPE_COLORS: Record<string, string> = {
-    fire: 'bg-orange-600', water: 'bg-blue-600', grass: 'bg-green-600',
-    electric: 'bg-yellow-500', dark: 'bg-purple-700', light: 'bg-yellow-200',
-    steel: 'bg-gray-500', dragon: 'bg-indigo-600',
-  }
-  const RARITY_COLORS: Record<string, string> = {
-    common: 'text-gray-300', rare: 'text-blue-400', epic: 'text-purple-400', legendary: 'text-yellow-400',
   }
 
   return (
@@ -77,7 +75,7 @@ export function ShopScreen({ save, setSave, onBack }: Props) {
           const species = SPECIES[speciesId]
           if (!species) return null
           const price = PRICES[species.rarity] ?? 15
-          const isBought = [...purchased].some(k => k.startsWith(speciesId + '_'))
+          const isBought = purchased.has(speciesId)
           const canAfford = currency >= price
 
           return (

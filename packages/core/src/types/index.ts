@@ -31,6 +31,7 @@ export interface SkillEffect {
   statusEffect?: StatusEffect
   healPercent?: number     // % of target max HP healed
   statMod?: { stat: keyof StatBlock; multiplier: number }
+  target?: 'self' | 'opponent'  // who receives the effect (defaults to 'opponent' if omitted)
 }
 
 export interface Skill {

@@ -1,7 +1,7 @@
 // apps/web/src/screens/BattleScreen.tsx
 import React, { useEffect, useRef, useState } from 'react'
-import type { SaveFile } from '@fantasymon/core'
-import { BattleEngine, getCurrentNode, generateEnemyTeamForNode, advanceNode } from '@fantasymon/core'
+import type { SaveFile, InRunBuff } from '@fantasymon/core'
+import { BattleEngine, getCurrentNode, generateEnemyTeamForNode, advanceNode, applyBuff, pickRandomBuffs } from '@fantasymon/core'
 import { BattleRenderer } from '@fantasymon/battle'
 
 interface Props {
@@ -13,25 +13,32 @@ interface Props {
 export function BattleScreen({ save, setSave, onBack }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [battleResult, setBattleResult] = useState<'player' | 'enemy' | null>(null)
+  const [buffOptions, setBuffOptions] = useState<InRunBuff[] | null>(null)
 
-  if (!save.runState) {
-    // Defensive: should not normally happen — navigate away
-    onBack()
-    return null
-  }
+  // Derive all values before hooks so they're available inside effects
   const runState = save.runState
-  const currentNode = getCurrentNode(runState)
+  const currentNode = runState ? getCurrentNode(runState) : null
   const playerTeam = save.roster.filter(p => save.activeTeam.includes(p.id))
   const baseLevel = playerTeam[0]?.level ?? 5
   const enemyTeam = currentNode ? generateEnemyTeamForNode(currentNode.type, baseLevel) : []
 
+  // Defensive: if somehow mounted without a run, navigate away via effect (not render)
   useEffect(() => {
-    if (!canvasRef.current || playerTeam.length === 0 || enemyTeam.length === 0) return
+    if (!runState) onBack()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!canvasRef.current || !runState || playerTeam.length === 0 || enemyTeam.length === 0) return
 
     const renderer = new BattleRenderer(canvasRef.current)
     renderer.init(playerTeam, enemyTeam)
 
-    const engine = new BattleEngine(playerTeam, enemyTeam)
+    // Apply in-run buffs to a copy of the player team (does not mutate the persisted roster)
+    let buffedTeam = playerTeam
+    for (const buff of runState.activeBuffs) {
+      buffedTeam = buff.apply(buffedTeam)
+    }
+    const engine = new BattleEngine(buffedTeam, enemyTeam)
     const events = engine.simulate()
 
     // Find the winner from battle_end event
@@ -48,7 +55,12 @@ export function BattleScreen({ save, setSave, onBack }: Props) {
 
     // Show outcome after last event
     timerIds.push(setTimeout(() => {
-      if (endEvent) setBattleResult(endEvent.winner)
+      if (!endEvent) return
+      setBattleResult(endEvent.winner)
+      const isLastNode = runState.currentNodeIndex === runState.nodes.length - 1
+      if (endEvent.winner === 'player' && !isLastNode) {
+        timerIds.push(setTimeout(() => setBuffOptions(pickRandomBuffs(3)), 800))
+      }
     }, delay + 500))
 
     return () => {
@@ -56,6 +68,8 @@ export function BattleScreen({ save, setSave, onBack }: Props) {
       renderer.destroy()
     }
   }, [])  // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (!runState) return null
 
   if (save.activeTeam.length === 0) {
     return (
@@ -67,23 +81,60 @@ export function BattleScreen({ save, setSave, onBack }: Props) {
   }
 
   function renderVictoryOverlay() {
-    const isLastNode = runState.currentNodeIndex === runState.nodes.length - 1
+    // runState is guaranteed non-null here (guarded by early return above)
+    const rs = runState!
+    const isLastNode = rs.currentNodeIndex === rs.nodes.length - 1
+
+    if (buffOptions) {
+      const tierColor: Record<string, string> = {
+        pet: 'bg-purple-700 text-purple-100',
+        type: 'bg-blue-700 text-blue-100',
+        team: 'bg-green-700 text-green-100',
+      }
+      return (
+        <>
+          <div className="text-2xl font-bold text-yellow-400 mb-4">Choose a Buff</div>
+          <div className="flex gap-4">
+            {buffOptions.map(buff => (
+              <button
+                key={buff.id}
+                onClick={() => {
+                  const nextRun = advanceNode(applyBuff(rs, buff))
+                  setSave({ ...save, runState: nextRun })
+                  onBack()
+                }}
+                className="flex flex-col items-start gap-2 p-4 w-48 bg-gray-800 border-2 border-gray-600 rounded-xl hover:border-yellow-400 hover:bg-gray-700 transition-colors text-left"
+              >
+                <span className={`text-xs font-bold px-2 py-0.5 rounded ${tierColor[buff.tier]}`}>
+                  {buff.tier.toUpperCase()}
+                </span>
+                <span className="text-white font-bold">{buff.name}</span>
+                <span className="text-gray-300 text-sm">{buff.description}</span>
+              </button>
+            ))}
+          </div>
+        </>
+      )
+    }
+
     return (
       <>
         <div className="text-4xl font-bold text-yellow-400">Victory!</div>
         <div className="text-gray-300">
-          {isLastNode ? 'Run complete!' : 'Node cleared.'}
+          {isLastNode ? 'Run complete!' : 'Preparing buffs…'}
         </div>
-        <button
-          onClick={() => {
-            const nextState = advanceNode(runState)
-            setSave({ ...save, runState: nextState })
-            onBack()
-          }}
-          className="px-6 py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-500"
-        >
-          {isLastNode ? 'Finish Run' : 'Continue →'}
-        </button>
+        {isLastNode && (
+          <button
+            onClick={() => {
+              const nextState = advanceNode(rs)
+              setSave({ ...save, runState: nextState })
+              onBack()
+            }}
+            className="px-6 py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-500"
+          >
+            Finish Run
+          </button>
+        )}
       </>
     )
   }

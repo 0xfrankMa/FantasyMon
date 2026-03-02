@@ -1,6 +1,7 @@
 // apps/web/src/App.tsx
 import React, { useState, useEffect } from 'react'
 import type { SaveFile } from '@fantasymon/core'
+import { ALL_BUFFS } from '@fantasymon/core' // ensures BUFF_REGISTRY populated before loadSave; eslint-disable-line @typescript-eslint/no-unused-vars
 import { loadSave, newSave, writeSave } from './save'
 import { HomeScreen } from './screens/HomeScreen'
 import { TeamBuilderScreen } from './screens/TeamBuilderScreen'

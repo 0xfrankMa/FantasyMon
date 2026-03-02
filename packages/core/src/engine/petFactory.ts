@@ -75,5 +75,6 @@ export function createPet(speciesId: string, level: number): Pet {
     evolutionStage,
     currentHp: maxHp,
     maxHp,
+    statusEffects: [],
   }
 }

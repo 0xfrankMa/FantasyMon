@@ -85,6 +85,7 @@ export interface Pet {
   evolutionStage: number
   currentHp: number        // tracked during battle
   maxHp: number
+  statusEffects: StatusEffect[]
 }
 
 export type BattleEvent =

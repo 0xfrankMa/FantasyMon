@@ -8,7 +8,7 @@ import { reconstructBuffs } from '@fantasymon/core'
 
 const KEY = 'fantasymon_save'
 
-// Species available from the start (all common-rarity species)
+// Starter species (common-rarity); rare/epic must be unlocked via run-end rewards
 const DEFAULT_UNLOCKED_SPECIES = ['embercub', 'aquafin', 'leafpup', 'voltmouse']
 
 // Serializable version of SaveFile — activeBuffs store only metadata, not the apply function
@@ -28,8 +28,8 @@ export function loadSave(): SaveFile | null {
     const base = {
       ...parsed,
       activeTeam,
-      wallet: parsed.wallet ?? 0,
-      unlockedSpecies: parsed.unlockedSpecies ?? [...DEFAULT_UNLOCKED_SPECIES],
+      wallet: (typeof parsed.wallet === 'number' && Number.isFinite(parsed.wallet) && parsed.wallet >= 0) ? parsed.wallet : 0,
+      unlockedSpecies: [...new Set(parsed.unlockedSpecies ?? DEFAULT_UNLOCKED_SPECIES)],
     }
     if (!parsed.runState) return base as SaveFile
     return {

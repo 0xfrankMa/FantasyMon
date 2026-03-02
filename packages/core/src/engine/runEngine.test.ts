@@ -1,14 +1,15 @@
 // packages/core/src/engine/runEngine.test.ts
 import { describe, it, expect } from 'vitest'
 import { createRun, advanceNode, applyBuff, isRunComplete, getCurrentNode, generateEnemyTeamForNode } from './runEngine'
+import type { RunState } from '../types'
 
 describe('createRun', () => {
-  it('creates a 3-node run: normal -> elite -> boss', () => {
+  it('creates a 7-node run starting with normal and ending with elite -> boss', () => {
     const run = createRun()
-    expect(run.nodes).toHaveLength(3)
+    expect(run.nodes).toHaveLength(7)
     expect(run.nodes[0].type).toBe('normal')
-    expect(run.nodes[1].type).toBe('elite')
-    expect(run.nodes[2].type).toBe('boss')
+    expect(run.nodes[5].type).toBe('elite')
+    expect(run.nodes[6].type).toBe('boss')
   })
   it('starts at node 0', () => {
     const run = createRun()
@@ -44,6 +45,10 @@ describe('isRunComplete', () => {
     run = advanceNode(run) // node 0 done, index=1
     run = advanceNode(run) // node 1 done, index=2
     run = advanceNode(run) // node 2 done, index=3
+    run = advanceNode(run) // node 3 done, index=4
+    run = advanceNode(run) // node 4 done, index=5
+    run = advanceNode(run) // node 5 done, index=6
+    run = advanceNode(run) // node 6 done, index=7
     expect(isRunComplete(run)).toBe(true)
   })
 })
@@ -55,7 +60,7 @@ describe('getCurrentNode', () => {
   })
   it('returns null when run is complete', () => {
     let run = createRun()
-    run = advanceNode(advanceNode(advanceNode(run)))
+    for (let i = 0; i < 7; i++) run = advanceNode(run)
     expect(getCurrentNode(run)).toBeNull()
   })
 })
@@ -72,6 +77,43 @@ describe('generateEnemyTeamForNode', () => {
   })
   it('throws for non-combat node types', () => {
     expect(() => generateEnemyTeamForNode('shop' as any, 5)).toThrow()
+  })
+})
+
+describe('createRun (7-node)', () => {
+  it('generates exactly 7 nodes', () => {
+    expect(createRun().nodes).toHaveLength(7)
+  })
+  it('first node is always normal', () => {
+    for (let i = 0; i < 10; i++) expect(createRun().nodes[0].type).toBe('normal')
+  })
+  it('node at index 5 is always elite', () => {
+    for (let i = 0; i < 10; i++) expect(createRun().nodes[5].type).toBe('elite')
+  })
+  it('last node is always boss', () => {
+    for (let i = 0; i < 10; i++) expect(createRun().nodes[6].type).toBe('boss')
+  })
+  it('middle 4 nodes (index 1-4) contain exactly one each of normal/elite/shop/rest', () => {
+    const run = createRun()
+    const middle = run.nodes.slice(1, 5).map(n => n.type).sort()
+    expect(middle).toEqual(['elite', 'normal', 'rest', 'shop'])
+  })
+})
+
+describe('advanceNode currency', () => {
+  it('awards 10 gold for completing a normal node', () => {
+    const run = createRun() // first node is always normal
+    expect(advanceNode(run).inRunCurrency).toBe(10)
+  })
+  it('awards 0 gold for completing a shop node', () => {
+    const run = createRun()
+    const shopRun: RunState = { ...run, nodes: [{ id: 'n1', type: 'shop', completed: false }, ...run.nodes.slice(1)] }
+    expect(advanceNode(shopRun).inRunCurrency).toBe(0)
+  })
+  it('awards 50 gold for completing a boss node', () => {
+    const run = createRun()
+    const bossRun: RunState = { ...run, nodes: [{ id: 'n1', type: 'boss', completed: false }], currentNodeIndex: 0 }
+    expect(advanceNode(bossRun).inRunCurrency).toBe(50)
   })
 })
 

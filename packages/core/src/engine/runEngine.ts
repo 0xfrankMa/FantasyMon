@@ -1,5 +1,5 @@
 // packages/core/src/engine/runEngine.ts
-import type { RunState, RunNode, InRunBuff, Pet } from '../types'
+import type { RunState, RunNode, RunNodeType, InRunBuff, Pet } from '../types'
 import { createPet } from './petFactory'
 
 function generateId(): string {
@@ -7,22 +7,45 @@ function generateId(): string {
 }
 
 export function createRun(): RunState {
+  const middle: RunNode[] = (
+    [
+      { id: generateId(), type: 'normal' as RunNodeType, completed: false },
+      { id: generateId(), type: 'elite'  as RunNodeType, completed: false },
+      { id: generateId(), type: 'shop'   as RunNodeType, completed: false },
+      { id: generateId(), type: 'rest'   as RunNodeType, completed: false },
+    ] as RunNode[]
+  ).sort(() => Math.random() - 0.5)
+
   const nodes: RunNode[] = [
     { id: generateId(), type: 'normal', completed: false },
-    { id: generateId(), type: 'elite', completed: false },
-    { id: generateId(), type: 'boss', completed: false },
+    ...middle,
+    { id: generateId(), type: 'elite',  completed: false },
+    { id: generateId(), type: 'boss',   completed: false },
   ]
   return { nodes, currentNodeIndex: 0, activeBuffs: [], inRunCurrency: 0 }
+}
+
+const CURRENCY_BY_NODE: Partial<Record<RunNodeType, number>> = {
+  normal: 10,
+  elite: 20,
+  boss: 50,
 }
 
 export function advanceNode(run: RunState): RunState {
   if (run.currentNodeIndex >= run.nodes.length) {
     throw new Error('advanceNode: run is already complete')
   }
+  const completedNode = run.nodes[run.currentNodeIndex]
+  const reward = CURRENCY_BY_NODE[completedNode.type] ?? 0
   const nodes = run.nodes.map((n, i) =>
     i === run.currentNodeIndex ? { ...n, completed: true } : n
   )
-  return { ...run, nodes, currentNodeIndex: run.currentNodeIndex + 1 }
+  return {
+    ...run,
+    nodes,
+    currentNodeIndex: run.currentNodeIndex + 1,
+    inRunCurrency: run.inRunCurrency + reward,
+  }
 }
 
 export function applyBuff(run: RunState, buff: InRunBuff): RunState {

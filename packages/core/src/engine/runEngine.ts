@@ -1,5 +1,6 @@
 // packages/core/src/engine/runEngine.ts
-import type { RunState, RunNode, InRunBuff } from '../types'
+import type { RunState, RunNode, InRunBuff, Pet } from '../types'
+import { createPet } from './petFactory'
 
 function generateId(): string {
   return crypto.randomUUID()
@@ -36,19 +37,30 @@ export function getCurrentNode(run: RunState): RunNode | null {
   return run.nodes[run.currentNodeIndex] ?? null
 }
 
-export function generateEnemyTeamForNode(nodeType: RunNode['type'], playerLevel: number): string[] {
-  // Returns array of speciesIds for enemy team based on node type
-  // Enemy level is derived from playerLevel by the caller (petFactory.createPet)
-  const normal = ['aquafin', 'leafpup', 'voltmouse']
-  const elite = ['tidalshark', 'thicketfox', 'stormhare']
-  const boss  = ['tidalshark', 'thicketfox', 'stormhare', 'ironpup', 'shadowkit']
+export function generateEnemyTeamForNode(nodeType: RunNode['type'], playerLevel = 5): Pet[] {
+  // Enemy level scales up by node type to provide increasing difficulty
+  const levelByType: Record<RunNode['type'], number> = {
+    normal: playerLevel,
+    elite:  playerLevel + 2,
+    boss:   playerLevel + 5,
+    shop:   playerLevel,
+    rest:   playerLevel,
+  }
+  const enemyLevel = levelByType[nodeType] ?? playerLevel
 
+  const normalIds = ['aquafin', 'leafpup', 'voltmouse']
+  const eliteIds  = ['tidalshark', 'thicketfox', 'stormhare']
+  const bossIds   = ['tidalshark', 'thicketfox', 'stormhare', 'ironpup', 'shadowkit']
+
+  let speciesIds: string[]
   switch (nodeType) {
-    case 'normal': return normal.slice(0, 2)
-    case 'elite':  return elite.slice(0, 3)
-    case 'boss':   return boss
+    case 'normal': speciesIds = normalIds.slice(0, 2); break
+    case 'elite':  speciesIds = eliteIds.slice(0, 3);  break
+    case 'boss':   speciesIds = bossIds;               break
     default:       throw new Error(`generateEnemyTeamForNode: no enemy roster for node type "${nodeType}"`)
   }
+
+  return speciesIds.map(id => createPet(id, enemyLevel))
 }
 
 // Registry of all in-run buffs by id — used to reconstruct apply functions after deserialization

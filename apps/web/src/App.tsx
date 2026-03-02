@@ -1,9 +1,21 @@
-import React from 'react'
+// apps/web/src/App.tsx
+import React, { useState, useEffect } from 'react'
+import type { SaveFile } from '@fantasymon/core'
+import { loadSave, newSave, writeSave } from './save'
+import { HomeScreen } from './screens/HomeScreen'
+import { TeamBuilderScreen } from './screens/TeamBuilderScreen'
+
+export type Screen = 'home' | 'teambuilder' | 'run'
 
 export function App() {
-  return (
-    <div className="min-h-screen flex items-center justify-center">
-      <h1 className="text-4xl font-bold text-yellow-400">FantasyMon</h1>
-    </div>
-  )
+  const [save, setSave] = useState<SaveFile>(() => loadSave() ?? newSave())
+  const [screen, setScreen] = useState<Screen>('home')
+
+  useEffect(() => { writeSave(save) }, [save])
+
+  if (screen === 'teambuilder') {
+    return <TeamBuilderScreen save={save} setSave={setSave} onBack={() => setScreen('home')} />
+  }
+
+  return <HomeScreen save={save} setSave={setSave} onNavigate={setScreen} />
 }

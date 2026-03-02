@@ -1,3 +1,8 @@
+/**
+ * IMPORTANT: All modules that call `registerBuff()` from @fantasymon/core
+ * must be imported BEFORE calling `loadSave()`. Otherwise active buff
+ * `apply` functions cannot be rehydrated and will be silently dropped.
+ */
 import type { SaveFile, RunState } from '@fantasymon/core'
 import { reconstructBuffs } from '@fantasymon/core'
 
@@ -48,4 +53,8 @@ export function writeSave(save: SaveFile): void {
 
 export function newSave(): SaveFile {
   return { roster: [], activeTeam: [], runState: null }
+}
+
+export function deleteSave(): void {
+  localStorage.removeItem(KEY)
 }

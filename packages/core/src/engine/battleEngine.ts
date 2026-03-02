@@ -1,8 +1,8 @@
 // packages/core/src/engine/battleEngine.ts
-import type { Pet, BattleEvent, Skill } from '../types'
+import type { Pet, BattleEvent, Skill, StatusEffect } from '../types'
 import { SPECIES } from '../data/species'
 import { getTypeMultiplier } from '../data/typeChart'
-import { calcStat, calcMaxHp } from './statCalc'
+import { calcStat } from './statCalc'
 
 function getEffectiveSpeed(pet: Pet): number {
   const species = SPECIES[pet.speciesId]
@@ -100,9 +100,12 @@ export class BattleEngine {
 
         if (opponents.length === 0) continue
 
-        // Pick a ready skill with power > 0, fallback to first skill
-        const readySkill = pet.skills.find(s => s.cooldownRemaining === 0 && s.skill.power > 0)
-          ?? pet.skills.find(s => s.cooldownRemaining === 0)
+        // Prefer offensive skills; use status/heal skills when HP is low or no offensive ready
+        const readyOffensive = pet.skills.find(s => s.cooldownRemaining === 0 && s.skill.power > 0)
+        const readyAny = pet.skills.find(s => s.cooldownRemaining === 0)
+        const readySkill = (pet.currentHp < pet.maxHp * 0.4 && readyAny && readyAny.skill.category === 'status')
+          ? readyAny
+          : (readyOffensive ?? readyAny)
 
         if (!readySkill) continue
 
@@ -113,8 +116,9 @@ export class BattleEngine {
 
         if (readySkill.skill.category === 'status') {
           // Handle status/heal skill (e.g. recover)
-          if (readySkill.skill.effect?.healPercent && readySkill.skill.effect.target === 'self') {
-            const healAmount = Math.floor(pet.maxHp * readySkill.skill.effect.healPercent)
+          if (readySkill.skill.effect?.healPercent) {
+            // status-category heals always target self
+            const healAmount = Math.max(1, Math.floor(pet.maxHp * readySkill.skill.effect.healPercent))
             pet.currentHp = Math.min(pet.maxHp, pet.currentHp + healAmount)
             this.events.push({ type: 'heal', unitId: pet.id, amount: healAmount })
           }
@@ -166,11 +170,28 @@ export class BattleEngine {
         for (const slot of unit.skills) {
           if (slot.cooldownRemaining > 0) slot.cooldownRemaining--
         }
-        // Tick burn damage
         if (unit.statusEffects && unit.currentHp > 0) {
           unit.statusEffects = unit.statusEffects
             .map(s => ({ ...s, duration: s.duration - 1 }))
-            .filter(s => s.duration > 0)
+
+          for (const effect of unit.statusEffects) {
+            // Apply periodic damage for burn/poison
+            if (effect.type === 'burn' || effect.type === 'poison') {
+              const dmg = Math.max(1, Math.floor(unit.maxHp * effect.value))
+              unit.currentHp = Math.max(0, unit.currentHp - dmg)
+              this.events.push({ type: 'status_damage', unitId: unit.id, amount: dmg, effectType: effect.type })
+              if (unit.currentHp === 0) {
+                this.events.push({ type: 'faint', unitId: unit.id })
+              }
+            }
+          }
+
+          // Remove expired effects and emit status_expire events
+          const toExpire = unit.statusEffects.filter(s => s.duration <= 0)
+          for (const expired of toExpire) {
+            this.events.push({ type: 'status_expire', unitId: unit.id, effectType: expired.type })
+          }
+          unit.statusEffects = unit.statusEffects.filter(s => s.duration > 0)
         }
       }
 

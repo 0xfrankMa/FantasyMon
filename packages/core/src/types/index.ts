@@ -92,6 +92,8 @@ export type BattleEvent =
   | { type: 'turn_start'; order: string[] }
   | { type: 'attack'; attackerId: string; targetId: string; skillId: string; damage: number }
   | { type: 'status'; unitId: string; effect: StatusEffect }
+  | { type: 'status_damage'; unitId: string; amount: number; effectType: StatusEffect['type'] }
+  | { type: 'status_expire'; unitId: string; effectType: StatusEffect['type'] }
   | { type: 'heal'; unitId: string; amount: number }
   | { type: 'faint'; unitId: string }
   | { type: 'battle_end'; winner: 'player' | 'enemy' }

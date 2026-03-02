@@ -47,9 +47,12 @@ function computeEvolutionStage(speciesId: string): number {
   }
   let stage = 0
   let current = speciesId
+  const visited = new Set<string>([speciesId])
   for (;;) {
     const preEvo = findPreEvolution(current)
     if (!preEvo) break
+    if (visited.has(preEvo)) break // circular chain guard
+    visited.add(preEvo)
     stage++
     current = preEvo
   }

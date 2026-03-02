@@ -110,13 +110,16 @@ export class BattleEngine {
         const readyOffensive = pet.skills.find(s => s.cooldownRemaining === 0 && s.skill.power > 0)
         const readyStatus = pet.skills.find(s => s.cooldownRemaining === 0 && s.skill.category === 'status')
         const readyAny = pet.skills.find(s => s.cooldownRemaining === 0)
-        const readySkill = (pet.currentHp < pet.maxHp * 0.4 && readyStatus)
+        // Don't heal if an offensive move would likely finish off the opponent
+        const target0 = opponents[0]
+        const offensiveWouldKill = readyOffensive != null && readyOffensive.skill.power > target0.currentHp
+        const readySkill = (pet.currentHp < pet.maxHp * 0.4 && readyStatus && !offensiveWouldKill)
           ? readyStatus
           : (readyOffensive ?? readyAny)
 
         if (!readySkill) continue
 
-        const target = opponents[0]
+        const target = target0
 
         // Accuracy check
         if (Math.random() * 100 > readySkill.skill.accuracy) continue
@@ -181,6 +184,9 @@ export class BattleEngine {
           unit.statusEffects = unit.statusEffects
             .map(s => ({ ...s, duration: s.duration - 1 }))
 
+          // Two-layer guard against double-faint: the outer `currentHp > 0` check above skips
+          // units killed by direct attacks; this inner flag prevents a second faint if multiple
+          // status effects (e.g. burn + poison) kill the unit in the same status tick.
           let unitFainted = false
           for (const effect of unit.statusEffects) {
             if (unitFainted) break

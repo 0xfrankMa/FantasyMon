@@ -1,7 +1,7 @@
 // apps/web/src/screens/BattleScreen.tsx
 import React, { useEffect, useRef, useState } from 'react'
 import type { SaveFile } from '@fantasymon/core'
-import { BattleEngine, getCurrentNode, generateEnemyTeamForNode, advanceNode, isRunComplete } from '@fantasymon/core'
+import { BattleEngine, getCurrentNode, generateEnemyTeamForNode, advanceNode } from '@fantasymon/core'
 import { BattleRenderer } from '@fantasymon/battle'
 
 interface Props {
@@ -14,7 +14,12 @@ export function BattleScreen({ save, setSave, onBack }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [battleResult, setBattleResult] = useState<'player' | 'enemy' | null>(null)
 
-  const runState = save.runState!
+  if (!save.runState) {
+    // Defensive: should not normally happen — navigate away
+    onBack()
+    return null
+  }
+  const runState = save.runState
   const currentNode = getCurrentNode(runState)
   const playerTeam = save.roster.filter(p => save.activeTeam.includes(p.id))
   const baseLevel = playerTeam[0]?.level ?? 5
@@ -62,20 +67,22 @@ export function BattleScreen({ save, setSave, onBack }: Props) {
   }
 
   function renderVictoryOverlay() {
-    const nextState = advanceNode(save.runState!)
-    const runDone = isRunComplete(nextState)
+    const isLastNode = runState.currentNodeIndex === runState.nodes.length - 1
     return (
       <>
         <div className="text-4xl font-bold text-yellow-400">Victory!</div>
-        <div className="text-gray-300">{runDone ? 'Run complete!' : 'Node cleared. Continue to the next battle.'}</div>
+        <div className="text-gray-300">
+          {isLastNode ? 'Run complete!' : 'Node cleared.'}
+        </div>
         <button
           onClick={() => {
+            const nextState = advanceNode(runState)
             setSave({ ...save, runState: nextState })
             onBack()
           }}
           className="px-6 py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-500"
         >
-          {runDone ? 'Finish Run' : 'Continue →'}
+          {isLastNode ? 'Finish Run' : 'Continue →'}
         </button>
       </>
     )

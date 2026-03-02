@@ -14,11 +14,14 @@ const MATRIX: number[][] = [
 /* dark  */[1.0,  1.0,   1.0,  1.0,  0.5,  0.5,   1.0,   2.0],
 /* light */[1.0,  1.0,   1.0,  1.0,  2.0,  0.5,   1.0,   1.0],
 /* steel */[0.5,  0.5,   1.0,  0.5,  1.0,  2.0,   0.5,   2.0],
-/* dragon*/[1.0,  1.0,   1.0,  1.0,  0.5,  1.0,   0.5,   2.0],
+/* dragon*/[1.0,  1.0,   1.0,  1.0,  0.5,  1.0,   0.5,   0.5],
 ]
 
 export function getTypeMultiplier(attacking: ElementType, defending: ElementType): number {
   const row = TYPES.indexOf(attacking)
   const col = TYPES.indexOf(defending)
+  if (row === -1 || col === -1) {
+    throw new Error(`Unknown ElementType: attacking="${attacking}", defending="${defending}"`)
+  }
   return MATRIX[row][col]
 }

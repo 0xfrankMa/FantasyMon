@@ -12,4 +12,10 @@ describe('getTypeMultiplier', () => {
   it('neutral matchup returns 1.0', () => {
     expect(getTypeMultiplier('fire', 'electric')).toBe(1.0)
   })
+  it('dragon is not very effective against dragon', () => {
+    expect(getTypeMultiplier('dragon', 'dragon')).toBe(0.5)
+  })
+  it('throws on unknown type', () => {
+    expect(() => getTypeMultiplier('fire' as any, 'unknown' as any)).toThrow('Unknown ElementType')
+  })
 })

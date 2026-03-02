@@ -76,7 +76,7 @@ describe('generateEnemyTeamForNode', () => {
 })
 
 import '../data/buffs'  // side-effect: populate BUFF_REGISTRY
-import { pickRandomBuffs } from './runEngine'
+import { pickRandomBuffs, BUFF_REGISTRY } from './runEngine'
 
 describe('pickRandomBuffs', () => {
   it('returns exactly n buffs', () => {
@@ -90,9 +90,10 @@ describe('pickRandomBuffs', () => {
     expect(new Set(ids).size).toBe(3)
   })
 
-  it('returns fewer if n exceeds pool size', () => {
+  it('returns all buffs if n exceeds pool size', () => {
+    const poolSize = Object.keys(BUFF_REGISTRY).length
     const picks = pickRandomBuffs(999)
-    expect(picks.length).toBeLessThanOrEqual(9)
+    expect(picks).toHaveLength(poolSize)
   })
 
   it('each returned buff has an apply function', () => {

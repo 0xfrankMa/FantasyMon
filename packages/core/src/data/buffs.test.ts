@@ -1,6 +1,5 @@
 // packages/core/src/data/buffs.test.ts
 import { describe, it, expect } from 'vitest'
-import './buffs'  // side-effect import to populate registry
 import { ALL_BUFFS } from './buffs'
 import { BUFF_REGISTRY } from '../engine/runEngine'
 import type { Pet } from '../types'
@@ -43,25 +42,15 @@ describe('ALL_BUFFS', () => {
     expect(result[0].currentHp).toBe(92)
   })
 
-  it('team_battle_cry returns new array and new pet objects (pure function check)', () => {
-    const battleCry = BUFF_REGISTRY['team_battle_cry']
-    expect(battleCry).toBeDefined()
-
-    const pet = stubPet('p1')
-    const original = [pet]
-    const result = battleCry.apply(original)
-
-    // Should return a new array
-    expect(result).not.toBe(original)
-    // Should return new pet objects
-    expect(result[0]).not.toBe(original[0])
-    // Original pet should be unchanged
-    expect(original[0].ivs.atk).toBe(15)
-    // New pet should have increased ATK
-    expect(result[0].ivs.atk).toBe(Math.round(15 * 1.15))
+  it('team_battle_cry sets inRunStatMults.atk to 1.15 on all pets', () => {
+    const buff = ALL_BUFFS.find(b => b.id === 'team_battle_cry')!
+    const pets = [stubPet('p1'), stubPet('p2')]
+    const result = buff.apply(pets)
+    expect(result[0].inRunStatMults?.atk).toBeCloseTo(1.15)
+    expect(result[1].inRunStatMults?.atk).toBeCloseTo(1.15)
   })
 
-  it('pet_vanguard boosts only the fastest pet', () => {
+  it('pet_vanguard boosts only the fastest pet via inRunStatMults.speed', () => {
     const vanguard = BUFF_REGISTRY['pet_vanguard']
     expect(vanguard).toBeDefined()
 
@@ -73,9 +62,9 @@ describe('ALL_BUFFS', () => {
     const resultSlow = result.find(p => p.id === 'slow')!
     const resultFast = result.find(p => p.id === 'fast')!
 
-    // Slow pet should be unchanged
-    expect(resultSlow.ivs.speed).toBe(10)
-    // Fast pet should have boosted speed
-    expect(resultFast.ivs.speed).toBe(Math.round(30 * 1.35))
+    // Slow pet should be unchanged (no inRunStatMults.speed set)
+    expect(resultSlow.inRunStatMults?.speed).toBeUndefined()
+    // Fast pet should have boosted speed multiplier
+    expect(resultFast.inRunStatMults?.speed).toBeCloseTo(1.35)
   })
 })

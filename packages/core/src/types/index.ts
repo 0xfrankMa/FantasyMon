@@ -86,6 +86,7 @@ export interface Pet {
   currentHp: number        // tracked during battle
   maxHp: number
   statusEffects: StatusEffect[]
+  inRunStatMults?: Partial<Record<'atk' | 'def' | 'spAtk' | 'spDef' | 'speed', number>>
 }
 
 export type BattleEvent =

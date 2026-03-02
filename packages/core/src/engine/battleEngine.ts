@@ -14,6 +14,7 @@ function getNatureMultiplier(nature: Nature, stat: keyof Omit<StatBlock, 'hp'>):
 function getEffectiveSpeed(pet: Pet): number {
   const species = SPECIES[pet.speciesId]
   let speed = calcStat(species.baseStats.speed, pet.ivs.speed, pet.evs.speed, pet.level)
+  speed = Math.round(speed * (pet.inRunStatMults?.speed ?? 1))
   // Apply nature modifier
   speed = Math.floor(speed * getNatureMultiplier(pet.nature, 'speed'))
   // Apply slow status if present
@@ -27,12 +28,12 @@ function calcDamage(attacker: Pet, defender: Pet, skill: Skill): number {
   const defSpecies = SPECIES[defender.speciesId]
 
   const attackStat = skill.category === 'physical'
-    ? calcStat(atkSpecies.baseStats.atk, attacker.ivs.atk, attacker.evs.atk, attacker.level)
-    : calcStat(atkSpecies.baseStats.spAtk, attacker.ivs.spAtk, attacker.evs.spAtk, attacker.level)
+    ? Math.round(calcStat(atkSpecies.baseStats.atk, attacker.ivs.atk, attacker.evs.atk, attacker.level) * (attacker.inRunStatMults?.atk ?? 1))
+    : Math.round(calcStat(atkSpecies.baseStats.spAtk, attacker.ivs.spAtk, attacker.evs.spAtk, attacker.level) * (attacker.inRunStatMults?.spAtk ?? 1))
 
   const defenseStat = skill.category === 'physical'
-    ? calcStat(defSpecies.baseStats.def, defender.ivs.def, defender.evs.def, defender.level)
-    : calcStat(defSpecies.baseStats.spDef, defender.ivs.spDef, defender.evs.spDef, defender.level)
+    ? Math.round(calcStat(defSpecies.baseStats.def, defender.ivs.def, defender.evs.def, defender.level) * (defender.inRunStatMults?.def ?? 1))
+    : Math.round(calcStat(defSpecies.baseStats.spDef, defender.ivs.spDef, defender.evs.spDef, defender.level) * (defender.inRunStatMults?.spDef ?? 1))
 
   // Apply nature modifier to attack stat
   const atkNatureMod = skill.category === 'physical'

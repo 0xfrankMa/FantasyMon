@@ -2,6 +2,7 @@
 import type { InRunBuff, Pet } from '../types'
 import { registerBuff } from '../engine/runEngine'
 import { SPECIES } from './species'
+import { calcStat } from '../engine/statCalc'
 
 const buffs: InRunBuff[] = [
   // ── Pet tier ────────────────────────────────────────────────────────────────
@@ -13,12 +14,20 @@ const buffs: InRunBuff[] = [
     tier: 'pet',
     apply(pets: Pet[]): Pet[] {
       if (pets.length === 0) return pets
-      const target = pets.reduce((best, p) =>
-        p.ivs.speed + p.evs.speed > best.ivs.speed + best.evs.speed ? p : best
-      )
+      const effectiveSpeed = (p: Pet) => {
+        const s = SPECIES[p.speciesId]
+        return calcStat(s?.baseStats.speed ?? 0, p.ivs.speed, p.evs.speed, p.level) * (p.inRunStatMults?.speed ?? 1)
+      }
+      const target = pets.reduce((best, p) => effectiveSpeed(p) > effectiveSpeed(best) ? p : best)
       return pets.map(p =>
         p.id === target.id
-          ? { ...p, ivs: { ...p.ivs, speed: Math.round(p.ivs.speed * 1.35) } }
+          ? {
+              ...p,
+              inRunStatMults: {
+                ...p.inRunStatMults,
+                speed: Math.round((p.inRunStatMults?.speed ?? 1) * 1.35 * 100) / 100,
+              },
+            }
           : { ...p }
       )
     },
@@ -53,12 +62,20 @@ const buffs: InRunBuff[] = [
     tier: 'pet',
     apply(pets: Pet[]): Pet[] {
       if (pets.length === 0) return pets
-      const target = pets.reduce((best, p) =>
-        p.ivs.atk + p.evs.atk > best.ivs.atk + best.evs.atk ? p : best
-      )
+      const effectiveAtk = (p: Pet) => {
+        const s = SPECIES[p.speciesId]
+        return calcStat(s?.baseStats.atk ?? 0, p.ivs.atk, p.evs.atk, p.level) * (p.inRunStatMults?.atk ?? 1)
+      }
+      const target = pets.reduce((best, p) => effectiveAtk(p) > effectiveAtk(best) ? p : best)
       return pets.map(p =>
         p.id === target.id
-          ? { ...p, ivs: { ...p.ivs, atk: Math.round(p.ivs.atk * 1.25) } }
+          ? {
+              ...p,
+              inRunStatMults: {
+                ...p.inRunStatMults,
+                atk: Math.round((p.inRunStatMults?.atk ?? 1) * 1.25 * 100) / 100,
+              },
+            }
           : { ...p }
       )
     },
@@ -76,7 +93,13 @@ const buffs: InRunBuff[] = [
       return pets.map(p => {
         const species = SPECIES[p.speciesId]
         if (species && (species.type1 === 'fire' || species.type2 === 'fire')) {
-          return { ...p, ivs: { ...p.ivs, atk: Math.round(p.ivs.atk * 1.20) } }
+          return {
+            ...p,
+            inRunStatMults: {
+              ...p.inRunStatMults,
+              atk: Math.round((p.inRunStatMults?.atk ?? 1) * 1.20 * 100) / 100,
+            },
+          }
         }
         return { ...p }
       })
@@ -93,7 +116,13 @@ const buffs: InRunBuff[] = [
       return pets.map(p => {
         const species = SPECIES[p.speciesId]
         if (species && (species.type1 === 'water' || species.type2 === 'water')) {
-          return { ...p, ivs: { ...p.ivs, def: Math.round(p.ivs.def * 1.20) } }
+          return {
+            ...p,
+            inRunStatMults: {
+              ...p.inRunStatMults,
+              def: Math.round((p.inRunStatMults?.def ?? 1) * 1.20 * 100) / 100,
+            },
+          }
         }
         return { ...p }
       })
@@ -110,7 +139,13 @@ const buffs: InRunBuff[] = [
       return pets.map(p => {
         const species = SPECIES[p.speciesId]
         if (species && (species.type1 === 'electric' || species.type2 === 'electric')) {
-          return { ...p, ivs: { ...p.ivs, speed: Math.round(p.ivs.speed * 1.20) } }
+          return {
+            ...p,
+            inRunStatMults: {
+              ...p.inRunStatMults,
+              speed: Math.round((p.inRunStatMults?.speed ?? 1) * 1.20 * 100) / 100,
+            },
+          }
         }
         return { ...p }
       })
@@ -126,7 +161,13 @@ const buffs: InRunBuff[] = [
     tier: 'team',
     apply(pets: Pet[]): Pet[] {
       if (pets.length === 0) return pets
-      return pets.map(p => ({ ...p, ivs: { ...p.ivs, atk: Math.round(p.ivs.atk * 1.15) } }))
+      return pets.map(p => ({
+        ...p,
+        inRunStatMults: {
+          ...p.inRunStatMults,
+          atk: Math.round((p.inRunStatMults?.atk ?? 1) * 1.15 * 100) / 100,
+        },
+      }))
     },
   },
 
@@ -137,7 +178,13 @@ const buffs: InRunBuff[] = [
     tier: 'team',
     apply(pets: Pet[]): Pet[] {
       if (pets.length === 0) return pets
-      return pets.map(p => ({ ...p, ivs: { ...p.ivs, speed: Math.round(p.ivs.speed * 1.15) } }))
+      return pets.map(p => ({
+        ...p,
+        inRunStatMults: {
+          ...p.inRunStatMults,
+          speed: Math.round((p.inRunStatMults?.speed ?? 1) * 1.15 * 100) / 100,
+        },
+      }))
     },
   },
 

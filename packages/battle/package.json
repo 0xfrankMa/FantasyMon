@@ -1,0 +1,11 @@
+{
+  "name": "@fantasymon/battle",
+  "version": "0.0.1",
+  "main": "./src/index.ts",
+  "dependencies": {
+    "pixi.js": "^7.4.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  }
+}

@@ -4,6 +4,13 @@ import type { SaveFile, InRunBuff } from '@fantasymon/core'
 import { BattleEngine, getCurrentNode, generateEnemyTeamForNode, advanceNode, applyBuff, pickRandomBuffs } from '@fantasymon/core'
 import { BattleRenderer } from '@fantasymon/battle'
 
+// module-level constant — defined once, not recreated on every render
+const TIER_COLOR: Record<InRunBuff['tier'], string> = {
+  pet: 'bg-purple-700 text-purple-100',
+  type: 'bg-blue-700 text-blue-100',
+  team: 'bg-green-700 text-green-100',
+}
+
 interface Props {
   save: SaveFile
   setSave: (s: SaveFile) => void
@@ -54,14 +61,19 @@ export function BattleScreen({ save, setSave, onBack }: Props) {
     })
 
     // Show outcome after last event
+    const isLastNode = runState.currentNodeIndex === runState.nodes.length - 1
+
     timerIds.push(setTimeout(() => {
       if (!endEvent) return
       setBattleResult(endEvent.winner)
-      const isLastNode = runState.currentNodeIndex === runState.nodes.length - 1
-      if (endEvent.winner === 'player' && !isLastNode) {
-        timerIds.push(setTimeout(() => setBuffOptions(pickRandomBuffs(3)), 800))
-      }
     }, delay + 500))
+
+    // Pre-schedule buff selection timer; only triggers for non-boss player victories
+    if (!isLastNode) {
+      timerIds.push(setTimeout(() => {
+        if (endEvent?.winner === 'player') setBuffOptions(pickRandomBuffs(3))
+      }, delay + 500 + 800))
+    }
 
     return () => {
       timerIds.forEach(clearTimeout)
@@ -81,16 +93,11 @@ export function BattleScreen({ save, setSave, onBack }: Props) {
   }
 
   function renderVictoryOverlay() {
-    // runState is guaranteed non-null here (guarded by early return above)
-    const rs = runState!
+    if (!runState) return null  // defensive guard, shouldn't be reached
+    const rs = runState
     const isLastNode = rs.currentNodeIndex === rs.nodes.length - 1
 
     if (buffOptions) {
-      const tierColor: Record<string, string> = {
-        pet: 'bg-purple-700 text-purple-100',
-        type: 'bg-blue-700 text-blue-100',
-        team: 'bg-green-700 text-green-100',
-      }
       return (
         <>
           <div className="text-2xl font-bold text-yellow-400 mb-4">Choose a Buff</div>
@@ -105,7 +112,7 @@ export function BattleScreen({ save, setSave, onBack }: Props) {
                 }}
                 className="flex flex-col items-start gap-2 p-4 w-48 bg-gray-800 border-2 border-gray-600 rounded-xl hover:border-yellow-400 hover:bg-gray-700 transition-colors text-left"
               >
-                <span className={`text-xs font-bold px-2 py-0.5 rounded ${tierColor[buff.tier]}`}>
+                <span className={`text-xs font-bold px-2 py-0.5 rounded ${TIER_COLOR[buff.tier]}`}>
                   {buff.tier.toUpperCase()}
                 </span>
                 <span className="text-white font-bold">{buff.name}</span>

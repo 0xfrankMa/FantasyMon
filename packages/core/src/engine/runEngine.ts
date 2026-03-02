@@ -80,3 +80,10 @@ export function reconstructBuffs(run: RunState): RunState {
       .filter(b => typeof b.apply === 'function'),
   }
 }
+
+// Returns n unique buffs chosen at random from the BUFF_REGISTRY
+export function pickRandomBuffs(n: number): InRunBuff[] {
+  const all = Object.values(BUFF_REGISTRY)
+  const shuffled = [...all].sort(() => Math.random() - 0.5)
+  return shuffled.slice(0, Math.min(n, shuffled.length))
+}

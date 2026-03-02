@@ -74,3 +74,30 @@ describe('generateEnemyTeamForNode', () => {
     expect(() => generateEnemyTeamForNode('shop' as any, 5)).toThrow()
   })
 })
+
+import '../data/buffs'  // side-effect: populate BUFF_REGISTRY
+import { pickRandomBuffs } from './runEngine'
+
+describe('pickRandomBuffs', () => {
+  it('returns exactly n buffs', () => {
+    const picks = pickRandomBuffs(3)
+    expect(picks).toHaveLength(3)
+  })
+
+  it('returns no duplicates', () => {
+    const picks = pickRandomBuffs(3)
+    const ids = picks.map(b => b.id)
+    expect(new Set(ids).size).toBe(3)
+  })
+
+  it('returns fewer if n exceeds pool size', () => {
+    const picks = pickRandomBuffs(999)
+    expect(picks.length).toBeLessThanOrEqual(9)
+  })
+
+  it('each returned buff has an apply function', () => {
+    for (const b of pickRandomBuffs(3)) {
+      expect(typeof b.apply).toBe('function')
+    }
+  })
+})

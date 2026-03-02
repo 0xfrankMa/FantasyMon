@@ -1,5 +1,5 @@
 // packages/core/src/engine/runEngine.ts
-import type { RunState, RunNode, InRunBuff, Pet } from '../types'
+import type { RunState, RunNode, InRunBuff } from '../types'
 
 function generateId(): string {
   return crypto.randomUUID()
@@ -15,6 +15,9 @@ export function createRun(): RunState {
 }
 
 export function advanceNode(run: RunState): RunState {
+  if (run.currentNodeIndex >= run.nodes.length) {
+    throw new Error('advanceNode: run is already complete')
+  }
   const nodes = run.nodes.map((n, i) =>
     i === run.currentNodeIndex ? { ...n, completed: true } : n
   )
@@ -44,6 +47,24 @@ export function generateEnemyTeamForNode(nodeType: RunNode['type'], playerLevel:
     case 'normal': return normal.slice(0, 2)
     case 'elite':  return elite.slice(0, 3)
     case 'boss':   return boss
-    default:       return normal.slice(0, 1)
+    default:       throw new Error(`generateEnemyTeamForNode: no enemy roster for node type "${nodeType}"`)
+  }
+}
+
+// Registry of all in-run buffs by id — used to reconstruct apply functions after deserialization
+export const BUFF_REGISTRY: Record<string, InRunBuff> = {}
+
+// Register a buff so it can be reconstructed after save/load
+export function registerBuff(buff: InRunBuff): void {
+  BUFF_REGISTRY[buff.id] = buff
+}
+
+// Reconstruct activeBuffs from serialized run state (replace apply-less objects with full buff objects)
+export function reconstructBuffs(run: RunState): RunState {
+  return {
+    ...run,
+    activeBuffs: run.activeBuffs
+      .map(b => BUFF_REGISTRY[b.id] ?? b)
+      .filter(b => typeof b.apply === 'function'),
   }
 }

@@ -12,6 +12,7 @@ interface Props {
 
 export function HomeScreen({ save, setSave, onNavigate }: Props) {
   function addStarterPets() {
+    if (save.roster.length > 0) return
     const starters = ['embercub', 'aquafin', 'leafpup'].map(id => createPet(id, 5))
     setSave({ ...save, roster: [...save.roster, ...starters], activeTeam: starters.map(p => p.id) })
   }

@@ -20,6 +20,8 @@ export function loadSave(): SaveFile | null {
   if (!raw) return null
   try {
     const parsed = JSON.parse(raw) as SerializableSaveFile
+    const rosterIds = new Set(parsed.roster.map(p => p.id))
+    parsed.activeTeam = parsed.activeTeam.filter(id => rosterIds.has(id))
     if (!parsed.runState) return parsed as unknown as SaveFile
     // Rehydrate buff apply functions from registry
     const rehydrated: SaveFile = {

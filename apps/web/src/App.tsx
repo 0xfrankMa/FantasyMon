@@ -17,5 +17,9 @@ export function App() {
     return <TeamBuilderScreen save={save} setSave={setSave} onBack={() => setScreen('home')} />
   }
 
+  if (screen === 'run') {
+    return <div>Battle coming soon!</div>
+  }
+
   return <HomeScreen save={save} setSave={setSave} onNavigate={setScreen} />
 }

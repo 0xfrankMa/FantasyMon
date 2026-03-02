@@ -9,13 +9,14 @@ interface Props {
   onBack: () => void
 }
 
+const typeColors: Record<string, string> = {
+  fire: 'text-orange-400', water: 'text-blue-400', grass: 'text-green-400',
+  electric: 'text-yellow-300', dark: 'text-purple-400', light: 'text-yellow-100',
+  steel: 'text-gray-300', dragon: 'text-violet-400',
+}
+
 function PetCard({ pet, selected, onToggle }: { pet: Pet; selected: boolean; onToggle: () => void }) {
   const species = SPECIES[pet.speciesId]
-  const typeColors: Record<string, string> = {
-    fire: 'text-orange-400', water: 'text-blue-400', grass: 'text-green-400',
-    electric: 'text-yellow-300', dark: 'text-purple-400', light: 'text-yellow-100',
-    steel: 'text-gray-300', dragon: 'text-violet-400',
-  }
 
   return (
     <div

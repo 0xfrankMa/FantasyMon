@@ -77,12 +77,11 @@ export function RestScreen({ save, setSave, onBack }: Props) {
   }
 
   function handleUpgradeBuff(buff: InRunBuff) {
-    // Apply buff again — multiplicatively compounds the effect
-    const roster = save.roster.map(p => {
-      if (!save.activeTeam.includes(p.id)) return p
-      const result = buff.apply([p])
-      return result[0]
-    })
+    // Apply buff to the full active team so pet-tier buffs can compare across the team
+    const activeTeamPets = save.roster.filter(p => save.activeTeam.includes(p.id))
+    const upgraded = buff.apply(activeTeamPets)
+    const upgradedById = Object.fromEntries(upgraded.map(p => [p.id, p]))
+    const roster = save.roster.map(p => upgradedById[p.id] ?? p)
     const nextRun = advanceNode({
       ...runState!,
       activeBuffs: [...runState!.activeBuffs, buff],

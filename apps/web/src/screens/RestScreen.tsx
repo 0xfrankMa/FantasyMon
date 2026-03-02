@@ -14,12 +14,11 @@ type RandomEvent =
   | { type: 'gold'; amount: number }
   | { type: 'hp'; percent: number }
 
-function rollRandomEvent(baseLevel: number): RandomEvent | null {
+function rollRandomEvent(baseLevel: number, unlockedSpecies: string[]): RandomEvent | null {
   if (Math.random() >= 0.2) return null
   const roll = Math.random()
   if (roll < 0.33) {
-    const ids = Object.keys(SPECIES)
-    return { type: 'pet', speciesId: ids[Math.floor(Math.random() * ids.length)] }
+    return { type: 'pet', speciesId: unlockedSpecies[Math.floor(Math.random() * unlockedSpecies.length)] }
   }
   if (roll < 0.66) return { type: 'gold', amount: 10 }
   return { type: 'hp', percent: 5 }
@@ -37,7 +36,7 @@ export function RestScreen({ save, setSave, onBack }: Props) {
   const playerTeam = save.roster.filter(p => save.activeTeam.includes(p.id))
   const baseLevel = playerTeam[0]?.level ?? 5
 
-  const [randomEvent] = useState<RandomEvent | null>(() => rollRandomEvent(baseLevel))
+  const [randomEvent] = useState<RandomEvent | null>(() => rollRandomEvent(baseLevel, save.unlockedSpecies))
   const [eventAcknowledged, setEventAcknowledged] = useState(false)
   const [upgradingBuff, setUpgradingBuff] = useState(false)
   const [done, setDone] = useState(false)

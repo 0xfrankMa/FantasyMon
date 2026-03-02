@@ -20,9 +20,8 @@ const RARITY_COLORS: Record<string, string> = {
   common: 'text-gray-300', rare: 'text-blue-400', epic: 'text-purple-400', legendary: 'text-yellow-400',
 }
 
-function pickShopEggs(count: number): string[] {
-  const ids = Object.keys(SPECIES)
-  const shuffled = [...ids].sort(() => Math.random() - 0.5)
+function pickShopEggs(count: number, allowedIds: string[]): string[] {
+  const shuffled = [...allowedIds].sort(() => Math.random() - 0.5)
   return shuffled.slice(0, count)
 }
 
@@ -32,7 +31,7 @@ export function ShopScreen({ save, setSave, onBack }: Props) {
   const playerTeam = save.roster.filter(p => save.activeTeam.includes(p.id))
   const baseLevel = playerTeam[0]?.level ?? 5
 
-  const [eggIds] = useState<string[]>(() => pickShopEggs(3))
+  const [eggIds] = useState<string[]>(() => pickShopEggs(3, save.unlockedSpecies))
   const [purchased, setPurchased] = useState<Set<string>>(() => new Set())
 
   if (!runState || !currentNode) return null

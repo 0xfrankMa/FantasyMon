@@ -17,7 +17,7 @@ const buffs: InRunBuff[] = [
         p.ivs.speed + p.evs.speed > best.ivs.speed + best.evs.speed ? p : best
       )
       return pets.map(p =>
-        p === target
+        p.id === target.id
           ? { ...p, ivs: { ...p.ivs, speed: Math.round(p.ivs.speed * 1.35) } }
           : { ...p }
       )
@@ -35,7 +35,7 @@ const buffs: InRunBuff[] = [
         p.currentHp < lowest.currentHp ? p : lowest
       )
       return pets.map(p =>
-        p === target
+        p.id === target.id
           ? {
               ...p,
               maxHp: Math.round(p.maxHp * 1.25),
@@ -57,7 +57,7 @@ const buffs: InRunBuff[] = [
         p.ivs.atk + p.evs.atk > best.ivs.atk + best.evs.atk ? p : best
       )
       return pets.map(p =>
-        p === target
+        p.id === target.id
           ? { ...p, ivs: { ...p.ivs, atk: Math.round(p.ivs.atk * 1.25) } }
           : { ...p }
       )

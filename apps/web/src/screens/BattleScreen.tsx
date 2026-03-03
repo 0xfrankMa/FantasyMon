@@ -71,6 +71,9 @@ export function BattleScreen({ save, setSave, onBack }: Props) {
         const expGained = enemyTeam.reduce((sum, p) => sum + p.level * 5, 0)
         const { updatedPets, levelUps: lvUps } = grantExp(playerTeam, expGained)
         const updatedById = Object.fromEntries(updatedPets.map(p => [p.id, p]))
+        // Note: `save` is captured at mount. This is a pre-existing pattern in this
+        // component (same for advanceNode/applyBuff calls). Safe here because the
+        // roster is only updated on the first and only victory of this battle instance.
         setSave({ ...save, roster: save.roster.map(p => updatedById[p.id] ?? p) })
         if (lvUps.length > 0) setLevelUps(lvUps)
       }
@@ -107,8 +110,9 @@ export function BattleScreen({ save, setSave, onBack }: Props) {
 
     const levelUpBanners = levelUps.length > 0 && (
       <div className="flex flex-col items-center gap-1 mb-3">
-        {levelUps.map((lu, i) => (
-          <div key={i} className="text-yellow-300 font-semibold text-sm">
+        {levelUps.map(lu => (
+          <div key={lu.petId + '-' + lu.newLevel} className="text-yellow-300 font-semibold text-sm">
+            {/* belt-and-suspenders: grantExp already threw on unknown speciesId */}
             ✨ {SPECIES[lu.speciesId]?.name ?? lu.speciesId} → Lv. {lu.newLevel}!
           </div>
         ))}

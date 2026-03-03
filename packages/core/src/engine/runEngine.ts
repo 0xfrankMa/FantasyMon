@@ -125,11 +125,10 @@ export function grantExp(
       exp -= level * 20
       level++
       const species = SPECIES[pet.speciesId]
-      if (species) {
-        const newMaxHp = calcMaxHp(species.baseStats.hp, pet.ivs.hp, pet.evs.hp, level)
-        currentHp += newMaxHp - maxHp
-        maxHp = newMaxHp
-      }
+      if (!species) throw new Error(`grantExp: unknown speciesId "${pet.speciesId}"`)
+      const newMaxHp = calcMaxHp(species.baseStats.hp, pet.ivs.hp, pet.evs.hp, level)
+      currentHp += newMaxHp - maxHp
+      maxHp = newMaxHp
       levelUps.push({ petId: pet.id, speciesId: pet.speciesId, newLevel: level })
     }
     return { ...pet, exp, level, currentHp, maxHp }

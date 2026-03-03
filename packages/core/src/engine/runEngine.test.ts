@@ -208,4 +208,10 @@ describe('grantExp', () => {
     expect(updatedPets[1].level).toBe(10)
     expect(levelUps).toHaveLength(1)
   })
+
+  it('throws when speciesId is unknown on level-up', () => {
+    const pet = { ...petAt(5), speciesId: 'not_a_real_species' }
+    // 100 EXP triggers level-up, which needs SPECIES lookup
+    expect(() => grantExp([pet], 100)).toThrow('not_a_real_species')
+  })
 })

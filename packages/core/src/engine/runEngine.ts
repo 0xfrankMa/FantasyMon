@@ -1,6 +1,8 @@
 // packages/core/src/engine/runEngine.ts
 import type { RunState, RunNode, RunNodeType, InRunBuff, Pet } from '../types'
 import { createPet } from './petFactory'
+import { SPECIES } from '../data/species'
+import { calcMaxHp } from './statCalc'
 
 function generateId(): string {
   return crypto.randomUUID()
@@ -109,4 +111,27 @@ export function pickRandomBuffs(n: number): InRunBuff[] {
   const all = Object.values(BUFF_REGISTRY)
   const shuffled = [...all].sort(() => Math.random() - 0.5)
   return shuffled.slice(0, Math.min(n, shuffled.length))
+}
+
+export function grantExp(
+  pets: Pet[],
+  expAmount: number
+): { updatedPets: Pet[]; levelUps: Array<{ petId: string; speciesId: string; newLevel: number }> } {
+  const levelUps: Array<{ petId: string; speciesId: string; newLevel: number }> = []
+  const updatedPets = pets.map(pet => {
+    let { exp, level, currentHp, maxHp } = pet
+    exp += expAmount
+    while (exp >= level * 20) {
+      exp -= level * 20
+      level++
+      const species = SPECIES[pet.speciesId]
+      if (!species) throw new Error(`grantExp: unknown speciesId "${pet.speciesId}"`)
+      const newMaxHp = calcMaxHp(species.baseStats.hp, pet.ivs.hp, pet.evs.hp, level)
+      currentHp += newMaxHp - maxHp
+      maxHp = newMaxHp
+      levelUps.push({ petId: pet.id, speciesId: pet.speciesId, newLevel: level })
+    }
+    return { ...pet, exp, level, currentHp, maxHp }
+  })
+  return { updatedPets, levelUps }
 }

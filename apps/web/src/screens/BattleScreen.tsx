@@ -1,7 +1,7 @@
 // apps/web/src/screens/BattleScreen.tsx
 import React, { useEffect, useRef, useState } from 'react'
 import type { SaveFile, InRunBuff } from '@fantasymon/core'
-import { BattleEngine, getCurrentNode, generateEnemyTeamForNode, advanceNode, applyBuff, pickRandomBuffs } from '@fantasymon/core'
+import { BattleEngine, getCurrentNode, generateEnemyTeamForNode, advanceNode, applyBuff, pickRandomBuffs, grantExp, SPECIES } from '@fantasymon/core'
 import { BattleRenderer } from '@fantasymon/battle'
 
 // module-level constant — defined once, not recreated on every render
@@ -21,6 +21,7 @@ export function BattleScreen({ save, setSave, onBack }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [battleResult, setBattleResult] = useState<'player' | 'enemy' | null>(null)
   const [buffOptions, setBuffOptions] = useState<InRunBuff[] | null>(null)
+  const [levelUps, setLevelUps] = useState<Array<{ petId: string; speciesId: string; newLevel: number }>>([])
 
   // Derive all values before hooks so they're available inside effects
   const runState = save.runState
@@ -66,6 +67,16 @@ export function BattleScreen({ save, setSave, onBack }: Props) {
     timerIds.push(setTimeout(() => {
       if (!endEvent) return
       setBattleResult(endEvent.winner)
+      if (endEvent.winner === 'player') {
+        const expGained = enemyTeam.reduce((sum, p) => sum + p.level * 5, 0)
+        const { updatedPets, levelUps: lvUps } = grantExp(playerTeam, expGained)
+        const updatedById = Object.fromEntries(updatedPets.map(p => [p.id, p]))
+        // Note: `save` is captured at mount. This is a pre-existing pattern in this
+        // component (same for advanceNode/applyBuff calls). Safe here because the
+        // roster is only updated on the first and only victory of this battle instance.
+        setSave({ ...save, roster: save.roster.map(p => updatedById[p.id] ?? p) })
+        if (lvUps.length > 0) setLevelUps(lvUps)
+      }
     }, delay + 500))
 
     // Pre-schedule buff selection timer; only triggers for non-boss player victories
@@ -93,13 +104,25 @@ export function BattleScreen({ save, setSave, onBack }: Props) {
   }
 
   function renderVictoryOverlay() {
-    if (!runState) return null  // defensive guard, shouldn't be reached
+    if (!runState) return null  // defensive guard
     const rs = runState
     const isLastNode = rs.currentNodeIndex === rs.nodes.length - 1
+
+    const levelUpBanners = levelUps.length > 0 && (
+      <div className="flex flex-col items-center gap-1 mb-3">
+        {levelUps.map(lu => (
+          <div key={lu.petId + '-' + lu.newLevel} className="text-yellow-300 font-semibold text-sm">
+            {/* belt-and-suspenders: grantExp already threw on unknown speciesId */}
+            ✨ {SPECIES[lu.speciesId]?.name ?? lu.speciesId} → Lv. {lu.newLevel}!
+          </div>
+        ))}
+      </div>
+    )
 
     if (buffOptions) {
       return (
         <>
+          {levelUpBanners}
           <div className="text-2xl font-bold text-yellow-400 mb-4">Choose a Buff</div>
           <div className="flex gap-4">
             {buffOptions.map(buff => (
@@ -126,6 +149,7 @@ export function BattleScreen({ save, setSave, onBack }: Props) {
 
     return (
       <>
+        {levelUpBanners}
         <div className="text-4xl font-bold text-yellow-400">Victory!</div>
         <div className="text-gray-300">
           {isLastNode ? 'Run complete!' : 'Preparing buffs…'}

@@ -118,7 +118,7 @@ describe('advanceNode currency', () => {
 })
 
 import '../data/buffs'  // side-effect: populate BUFF_REGISTRY
-import { pickRandomBuffs, BUFF_REGISTRY } from './runEngine'
+import { pickRandomBuffs, BUFF_REGISTRY, grantExp } from './runEngine'
 
 describe('pickRandomBuffs', () => {
   it('returns exactly n buffs', () => {
@@ -142,5 +142,76 @@ describe('pickRandomBuffs', () => {
     for (const b of pickRandomBuffs(3)) {
       expect(typeof b.apply).toBe('function')
     }
+  })
+})
+
+import type { Pet } from '../types'
+
+// Creates a real Pet at the given level using generateEnemyTeamForNode
+function petAt(level: number, exp = 0): Pet {
+  return { ...generateEnemyTeamForNode('normal', level)[0], exp }
+}
+
+describe('grantExp', () => {
+  it('adds exp without leveling up when below threshold', () => {
+    const pet = petAt(5)
+    // threshold: 5 * 20 = 100; 50 < 100 → no level-up
+    const { updatedPets, levelUps } = grantExp([pet], 50)
+    expect(updatedPets[0].exp).toBe(50)
+    expect(updatedPets[0].level).toBe(5)
+    expect(levelUps).toHaveLength(0)
+  })
+
+  it('levels up exactly at threshold with 0 exp leftover', () => {
+    const pet = petAt(5)
+    // 100 EXP = exactly the threshold; 0 leftover
+    const { updatedPets, levelUps } = grantExp([pet], 100)
+    expect(updatedPets[0].level).toBe(6)
+    expect(updatedPets[0].exp).toBe(0)
+    expect(levelUps).toHaveLength(1)
+    expect(levelUps[0].newLevel).toBe(6)
+    expect(levelUps[0].petId).toBe(pet.id)
+  })
+
+  it('carries over excess exp after level-up', () => {
+    const pet = petAt(5)
+    // 110 EXP → levels up (threshold 100), 10 left over
+    const { updatedPets, levelUps } = grantExp([pet], 110)
+    expect(updatedPets[0].level).toBe(6)
+    expect(updatedPets[0].exp).toBe(10)
+    expect(levelUps).toHaveLength(1)
+  })
+
+  it('can level up multiple times from a single grant', () => {
+    const pet = petAt(5)
+    // 5→6 costs 100, 6→7 costs 120; total 220 for two level-ups
+    const { updatedPets, levelUps } = grantExp([pet], 220)
+    expect(updatedPets[0].level).toBe(7)
+    expect(levelUps).toHaveLength(2)
+    expect(levelUps.map(l => l.newLevel)).toEqual([6, 7])
+  })
+
+  it('increases maxHp and currentHp by the same delta on level-up', () => {
+    const pet = petAt(5)
+    const { updatedPets } = grantExp([pet], 100)
+    const hpDelta = updatedPets[0].maxHp - pet.maxHp
+    expect(hpDelta).toBeGreaterThan(0)
+    expect(updatedPets[0].currentHp).toBe(pet.currentHp + hpDelta)
+  })
+
+  it('applies exp independently to multiple pets', () => {
+    const pets = [petAt(5), petAt(10)]
+    const { updatedPets, levelUps } = grantExp(pets, 100)
+    // pet[0] at level 5: threshold 100 → levels up
+    expect(updatedPets[0].level).toBe(6)
+    // pet[1] at level 10: threshold 200 → no level-up on 100 EXP
+    expect(updatedPets[1].level).toBe(10)
+    expect(levelUps).toHaveLength(1)
+  })
+
+  it('throws when speciesId is unknown on level-up', () => {
+    const pet = { ...petAt(5), speciesId: 'not_a_real_species' }
+    // 100 EXP triggers level-up, which needs SPECIES lookup
+    expect(() => grantExp([pet], 100)).toThrow('not_a_real_species')
   })
 })
